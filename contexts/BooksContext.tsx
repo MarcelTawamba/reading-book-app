@@ -7,7 +7,7 @@ import { useUser } from '../hooks/useUser';
 type BooksContextType = {
   books: any;
   fetchBooks: () => Promise<void>;
-  fetchBookById: (id: string) => Promise<void>;
+  fetchBookById: (id: string) => Promise<Models.Document | undefined>;
   createBook: (data: Book) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
 };
@@ -24,7 +24,7 @@ type Book = {
 export const BooksContext = createContext<BooksContextType>({
   books: [],
   fetchBooks: async () => {},
-  fetchBookById: async () => {},
+  fetchBookById: async () => undefined,
   createBook: async () => {},
   deleteBook: async () => {},
 });
@@ -50,9 +50,15 @@ export const BooksProvider = ({ children } : { children: ReactNode }) => {
 
   const fetchBookById = async (id: string) => {
     try {
-
+      const book = await databases.getDocument(
+        DATABASE_ID,
+        COLLECTION_ID,
+        id
+      );
+      return book;
     } catch(error: any) {
       console.error(error.message);
+      return undefined;
     }
   };
 
@@ -76,7 +82,11 @@ export const BooksProvider = ({ children } : { children: ReactNode }) => {
 
   const deleteBook = async (id: string) => {
     try {
-
+      await databases.deleteDocument(
+        DATABASE_ID,
+        COLLECTION_ID,
+        id
+      );
     } catch(error: any) {
       console.error(error.message);
     }
@@ -94,6 +104,8 @@ export const BooksProvider = ({ children } : { children: ReactNode }) => {
 
         if (events[0].includes('create')) {
           setBooks((previousBooks) => [...previousBooks, payload as Models.Document]);
+        } else if (events[0].includes('delete')) {
+          setBooks((previousBooks) => previousBooks.filter(book => book.$id !== (payload as Models.Document).$id));
         }
       });
     } else {
